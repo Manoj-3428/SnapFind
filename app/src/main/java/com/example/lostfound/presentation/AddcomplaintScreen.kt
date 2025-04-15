@@ -1,13 +1,9 @@
 package com.example.lostfound.presentation
 
 import android.Manifest
+import android.R.attr.description
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -18,15 +14,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -35,24 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,144 +36,162 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import com.example.lostfound.R
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.FileProvider
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.lostfound.R
 import com.example.lostfound.model.LocationDetails
 import com.example.lostfound.model.Profiles
-import com.example.lostfound.ui.theme.black
-import com.example.lostfound.ui.theme.primary_dark
-import com.example.lostfound.ui.theme.primary_light
-import com.example.lostfound.ui.theme.secondary
-import com.example.lostfound.ui.theme.secondary_light
-import com.example.lostfound.ui.theme.white
-import com.example.lostfound.viewmodel.ComplaintViewModel
+import com.example.lostfound.ui.theme.*
 import com.example.lostfound.viewmodel.firebase.saveDataToFirebase
 import com.example.lostfound.viewmodel.getAddressFromLocation
-
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.io.File
+import java.net.URL
 
 @RequiresApi(Build.VERSION_CODES.O)
-@SuppressLint("MissingPermission", "UnusedMaterial3ScaffoldPaddingParameter")
+@SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun addComplaint(navController: NavController) {
+fun AddComplaintScreen(navController: NavController) {
+    // State variables
     val types = listOf("Wallet", "Bag", "Phone", "Jewelry", "Keys", "Documents", "Others")
     val imageUri = remember { mutableStateOf<Uri?>(null) }
     val expanded = remember { mutableStateOf(false) }
     val selectedOption = remember { mutableStateOf(types[0]) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val locationPermission =
-        rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    val locationPermission = rememberPermissionState(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    val notificationPermission = rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Form fields
     val address = remember { mutableStateOf("") }
     val latitude = remember { mutableStateOf<Double?>(null) }
     val longitude = remember { mutableStateOf<Double?>(null) }
-    val fusedLocation = LocationServices.getFusedLocationProviderClient(context)
-    val scrollState = rememberScrollState()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val description = remember { mutableStateOf("") }
-    val contact = remember { mutableStateOf("") }
-    val marks = remember { mutableStateOf("") }
     val rewards = remember { mutableStateOf("") }
-    val profileUri=remember { mutableStateOf("") }
-    val isGetting = remember { mutableStateOf(false) }
-    var locationDetails = remember { mutableStateOf<LocationDetails?>(null) }
-    var detectionResult = ""
-    val notificationPermission =
-        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val singleImageLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            imageUri.value = uri
+    val marks = remember { mutableStateOf("") }
+    val profileUri = remember { mutableStateOf("") }
+    val isGettingLocation = remember { mutableStateOf(false) }
+    val locationDetails = remember { mutableStateOf<LocationDetails?>(null) }
+    val isLoading = remember { mutableStateOf(false) }
+
+    // Services
+    val fusedLocation = LocationServices.getFusedLocationProviderClient(context)
+    val db = FirebaseFirestore.getInstance()
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+    // Image picker
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> imageUri.value = uri }
+
+    // Load user profile
+    LaunchedEffect(userId) {
+        db.collection("users").document(userId).get().addOnSuccessListener { document ->
+            document.toObject(Profiles::class.java)?.let { profile ->
+                profileUri.value = profile.uri ?: ""
+            }
         }
-    Scaffold(modifier = Modifier.fillMaxSize()) {it->
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFFF5F7FA)
+    ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(it),
-            verticalArrangement = Arrangement.Top,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Header
+            Text(
+                text = "Report Lost Item",
+                color = primary_dark,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
+            // Image Upload Section
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .height(250.dp)
-                    .padding(start = 10.dp, end = 10.dp, top = 20.dp).border(2.dp, black)
-                    .clickable {
-                        singleImageLauncher.launch("image/*")
-                    },
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(horizontal = 16.dp)
+                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                    .clickable { imagePicker.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
                 if (imageUri.value != null) {
                     AsyncImage(
                         model = imageUri.value,
                         contentDescription = "Selected Image",
-                        modifier = Modifier.fillMaxSize().height(250.dp).fillMaxWidth().padding(),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Image(
-                        painter = painterResource(R.drawable.cam),
-                        contentDescription = "Placeholder Image",
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.cam),
+                            contentDescription = "Camera Icon",
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Upload Item Photo",
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Fill complaint details",
-                color = secondary,
-                modifier = Modifier
-                    .padding(top = 10.dp, bottom = 10.dp)
-                    .align(alignment = Alignment.CenterHorizontally),
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Item Type Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded.value,
                 onExpandedChange = { expanded.value = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             ) {
                 OutlinedTextField(
                     value = selectedOption.value,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(text = "Select Item Type") },
-
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            keyboardController?.hide()
-                        }
-                    ),
+                    label = { Text("Item Type") },
                     trailingIcon = {
                         Icon(
                             Icons.Default.ArrowDropDown,
-                            contentDescription = "arrow"
+                            contentDescription = "Dropdown arrow"
                         )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 10.dp, end = 10.dp)
-                        .menuAnchor()
-                        .clickable { expanded.value = !expanded.value },
+                        .menuAnchor(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedLabelColor = secondary_light,
-                        unfocusedLabelColor = secondary,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
                         focusedBorderColor = secondary_light,
-                        unfocusedBorderColor = secondary,
-                        focusedTrailingIconColor = secondary_light,
-                        unfocusedTrailingIconColor = secondary
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedLabelColor = secondary_light,
+                        unfocusedLabelColor = Color.Gray
                     )
                 )
 
@@ -220,228 +210,190 @@ fun addComplaint(navController: NavController) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Location Field
             OutlinedTextField(
                 value = address.value,
                 onValueChange = { address.value = it },
-
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                    }
-                ),
-                modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 10.dp),
                 label = {
                     Text(
-                        text = if (isGetting.value) "Fetching location..."
-                        else "Last seen location",
-                        color = if (isGetting.value) Color.Gray else secondary
+                        if (isGettingLocation.value) "Fetching location..."
+                        else "Last seen location"
                     )
                 },
                 trailingIcon = {
-                    if (isGetting.value) {
+                    if (isGettingLocation.value) {
                         CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
                             color = primary_dark,
-                            modifier = Modifier.size(24.dp)
+                            strokeWidth = 3.dp
                         )
                     } else {
                         Icon(
                             Icons.Default.LocationOn,
-                            contentDescription = "location",
+                            contentDescription = "Get location",
                             modifier = Modifier.clickable {
-                                isGetting.value = true
+                                isGettingLocation.value = true
                                 if (locationPermission.status.isGranted) {
                                     fusedLocation.getCurrentLocation(
                                         Priority.PRIORITY_HIGH_ACCURACY,
                                         null
-                                    )
-                                        .addOnSuccessListener { loc ->
-                                            if (loc != null) {
-                                                latitude.value = loc.latitude
-                                                longitude.value = loc.longitude
-                                                coroutineScope.launch(Dispatchers.IO) {
-                                                    locationDetails.value= getAddressFromLocations(
-                                                        latitude.value ?: 0.0,
-                                                        longitude.value ?: 0.0,
-                                                        context
-                                                    )
-//                                                    Log.d("Location dtails:",locationDetails.value.toString())
-                                                    isGetting.value = false
-                                                    address.value=getAddressFromLocation(latitude.value ?: 0.0,
-                                                        longitude.value ?: 0.0,
-                                                        context)
-                                                }
-                                            } else {
-                                                address.value = "Address not found"
-                                                isGetting.value = false
+                                    ).addOnSuccessListener { location ->
+                                        location?.let { loc ->
+                                            latitude.value = loc.latitude
+                                            longitude.value = loc.longitude
+                                            coroutineScope.launch(Dispatchers.IO) {
+                                                locationDetails.value = getAddressFromLocations(
+                                                    lat = loc.latitude,
+                                                    long = loc.longitude,
+                                                    context = context
+                                                )
+                                                address.value = getAddressFromLocation(
+                                                    lat = loc.latitude,
+                                                    long = loc.longitude,
+                                                    context = context
+                                                )
+                                                isGettingLocation.value = false
                                             }
-                                        }.addOnFailureListener {
-                                            address.value = it.message.toString()
-                                            isGetting.value = false
-
+                                        } ?: run {
+                                            address.value = "Location not available"
+                                            isGettingLocation.value = false
                                         }
+                                    }.addOnFailureListener {
+                                        address.value = it.message ?: "Location error"
+                                        isGettingLocation.value = false
+                                    }
                                 } else {
                                     locationPermission.launchPermissionRequest()
                                 }
-                            })
+                            }
+                        )
                     }
                 },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedLabelColor = secondary_light,
-                    unfocusedLabelColor = Color.Gray,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
                     focusedBorderColor = secondary_light,
-                    unfocusedBorderColor = secondary,
-                    focusedTrailingIconColor = secondary_light,
-                    unfocusedTrailingIconColor = secondary
-                )
-            )
-            OutlinedTextField(
-                value = contact.value,
-                onValueChange = { contact.value = it },
-                label = { Text("Contact Details") },
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = secondary_light,
-                    unfocusedBorderColor = Color.Gray,
+                    unfocusedBorderColor = Color.LightGray,
                     focusedLabelColor = secondary_light,
-                    unfocusedLabelColor = secondary,
-                    focusedLeadingIconColor = secondary_light,
-                    unfocusedLeadingIconColor = secondary
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Phone,
-                    imeAction = ImeAction.Next
+                    unfocusedLabelColor = Color.Gray
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                    }
+                    onDone = { keyboardController?.hide() }
                 )
             )
+
+
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Reward Information
             OutlinedTextField(
                 value = rewards.value,
                 onValueChange = { rewards.value = it },
-                label = { Text("Rewards") },
-                modifier = Modifier.fillMaxWidth().padding(10.dp),
-                colors = TextFieldDefaults.outlinedTextFieldColors(
+                label = { Text("Reward (Optional)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
                     focusedBorderColor = secondary_light,
-                    unfocusedBorderColor = Color.Gray,
+                    unfocusedBorderColor = Color.LightGray,
                     focusedLabelColor = secondary_light,
-                    unfocusedLabelColor = secondary,
-                    focusedLeadingIconColor = secondary_light,
-                    unfocusedLeadingIconColor = secondary
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                    }
+                    unfocusedLabelColor = Color.Gray
                 )
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Identifiable Marks
             OutlinedTextField(
                 value = marks.value,
                 onValueChange = { marks.value = it },
-                label = { Text("Additional Identifiable Marks") },
-                modifier = Modifier.fillMaxWidth().height(150.dp).padding(10.dp),
+                label = { Text("Identifiable Marks") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(horizontal = 16.dp),
                 minLines = 3,
-                colors = TextFieldDefaults.outlinedTextFieldColors(
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
                     focusedBorderColor = secondary_light,
-                    unfocusedBorderColor = Color.Gray,
+                    unfocusedBorderColor = Color.LightGray,
                     focusedLabelColor = secondary_light,
-                    unfocusedLabelColor = secondary,
-                    focusedLeadingIconColor = secondary_light,
-                    unfocusedLeadingIconColor = secondary
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        keyboardController?.hide()
-                    }
+                    unfocusedLabelColor = Color.Gray
                 )
             )
-            Spacer(modifier = Modifier.weight(1f))
-            val isLoading = remember { mutableStateOf(false) }
-            val db=FirebaseFirestore.getInstance()
-            val userid = FirebaseAuth.getInstance().currentUser?.uid.toString()
-            db.collection("users").document(userid).get().addOnSuccessListener { document ->
-                val profile = document.toObject(Profiles::class.java)
-                if (profile != null) {
-                    profileUri.value = profile.uri
-                }
-            }
-            if (isGetting.value == false) {
-                Button(
-                    onClick = {
-                        Log.d("Location dtails:",locationDetails.value.toString())
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Submit Button
+            Button(
+                onClick = {
+                    if (imageUri.value == null) {
+                        Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    isLoading.value = true
+                    notificationPermission.launchPermissionRequest()
+
+                    imageUri.value?.let { uri ->
                         coroutineScope.launch {
-                            imageUri.value?.let {
-                                isLoading.value = true
-                                notificationPermission.launchPermissionRequest()
-                                saveDataToFirebase(
-                                    detectionResult,
-                                    address.value,
-                                    notificationPermission.status.isGranted,
-                                    it,
-                                    context,
-                                    selectedOption.value,
-                                    description.value,
-                                    address.value,
-                                    latitude.value.toString(),
-                                    longitude.value.toString(),
-                                    contact.value,
-                                    rewards.value,
-                                    profileUri.value,
-                                    locationDetails.value!!
-                                ) {
-                                    isLoading.value = false
-                                    navController.navigate("Home")
-
-                                }
-
-
-                            } ?: Toast.makeText(
-                                context,
-                                "Please select an image",
-                                Toast.LENGTH_SHORT
-                            )
-                                .show()
+                            saveDataToFirebase(
+                                detectionResult = "",
+                                address = address.value,
+                                uri = uri,
+                                isGranted = notificationPermission.status.isGranted,
+                                context = context,
+                                type = selectedOption.value,
+                                description = marks.value,
+                                location = address.value,
+                                latitude = latitude.value?.toString() ?: "",
+                                longitude = longitude.value?.toString() ?: "",
+                                rewards = rewards.value,
+                                profileUri = profileUri.value,
+                                locationDetails = locationDetails.value ?: LocationDetails()
+                            ) {
+                                isLoading.value = false
+                                navController.navigate("Home")
+                            }
                         }
-                    },
-                    enabled = !isLoading.value,
-                    modifier = Modifier.padding(
-                        top = 20.dp,
-                        end = 20.dp,
-                        start = 20.dp,
-                        bottom = 15.dp
-                    )
-                        .fillMaxWidth().align(Alignment.CenterHorizontally),
-                    shape = RoundedCornerShape(2.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = primary_light,
-                        contentColor = white
-                    )
-                ) {
-                    Text(text = "Post")
-                }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = primary_light,
+                    contentColor = white
+                ),
+                enabled = !isLoading.value
+            ) {
                 if (isLoading.value) {
-                    navController.navigate("LottieAnimation")
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = white
+                    )
+                } else {
+                    Text(
+                        text = "SUBMIT REPORT",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
-}
-fun getRealPathFromUri(context: Context, uri: Uri): String {
-    val file = File(context.cacheDir, "temp_image.jpg")
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        file.outputStream().use { output ->
-            input.copyTo(output)
-        }
-    }
-    return file.absolutePath
 }
 

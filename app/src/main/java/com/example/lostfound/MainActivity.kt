@@ -31,25 +31,24 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import com.example.lostfound.model.Complaint
+import com.example.lostfound.presentation.AddComplaintScreen
 import com.example.lostfound.presentation.CallScreen
 import com.example.lostfound.presentation.ChatScreen
 import com.example.lostfound.presentation.ComplaintScreen
 import com.example.lostfound.presentation.DetailScreen
 import com.example.lostfound.presentation.Home
 import com.example.lostfound.presentation.MessageScreen
-import com.example.lostfound.presentation.addComplaint
+import com.example.lostfound.presentation.ProfileScreen
 import com.example.lostfound.presentation.animation.LottieAnimation
 import com.example.lostfound.presentation.authentication.LoginScreen
 import com.example.lostfound.presentation.authentication.SignupScreen
 import com.example.lostfound.presentation.onboarding.OnboardingScreen
-import com.example.lostfound.presentation.profile
 import com.example.lostfound.ui.theme.primary_dark
 import com.example.lostfound.ui.theme.white
 import com.example.lostfound.viewmodel.AuthViewModel
 import com.example.lostfound.viewmodel.ComplaintViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.messaging.FirebaseMessaging
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalMaterial3Api::class)
@@ -120,7 +119,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     composable("profile") {
-                        profile(navController)
+                        showTopBar = false
+                        showBottomBar = false
+                        ProfileScreen(navController)
                     }
                     composable("calls") {
                         showTopBar = true
@@ -130,7 +131,7 @@ class MainActivity : ComponentActivity() {
                     composable("addComplaint") {
                         showTopBar = false
                         showBottomBar = false
-                        addComplaint(navController)
+                        AddComplaintScreen(navController)
                     }
                     composable("LottieAnimation") {
                         LottieAnimation()

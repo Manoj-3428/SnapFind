@@ -44,7 +44,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             dayOfWeek = remoteMessage.data["dayOfWeek"] ?: "",
             formattedTime = remoteMessage.data["formattedTime"] ?: "",
             email = remoteMessage.data["email"] ?: "",
-            contact = remoteMessage.data["contact"] ?: "",
             rewards = remoteMessage.data["rewards"] ?: "",
             profileUri = remoteMessage.data["profileUri"] ?: "",
             status = remoteMessage.data["status"] ?: "Pending",

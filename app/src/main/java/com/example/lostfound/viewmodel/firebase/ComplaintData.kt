@@ -31,10 +31,12 @@ import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.LocalTime
+import java.util.Date
+
 @RequiresApi(Build.VERSION_CODES.O)
 fun saveDataToFirebase(
     detectionResult: String, address: String, isGranted: Boolean, uri: Uri, context: Context,
-    type: String, description: String, location: String, latitude: String, longitude: String,contact: String,rewards: String,profileUri: String,locationDetails: LocationDetails,
+    type: String, description: String, location: String, latitude: String, longitude: String,rewards: String,profileUri: String,locationDetails: LocationDetails,
     onComplete: () -> Unit
 ) {
     val currentDate = LocalDate.now()
@@ -81,7 +83,7 @@ fun saveDataToFirebase(
                 storeComplaints(
                     detectionResult, userid, isGranted, postId, db, address, downloadUrl.toString(),
                     context, type, description, location, latitude, longitude, formattedDate,
-                    dayOfWeek, formattedTime, username, email,contact,rewards, profileUri,locationDetails,onComplete
+                    dayOfWeek, formattedTime, username, email,rewards, profileUri,locationDetails,onComplete
                 )
             }.addOnFailureListener {
                 Log.e("UploadError", "Failed to get download URL: ${it.message}")
@@ -116,11 +118,12 @@ fun storeComplaints(detectionResults: String, userid: String, isGranted: Boolean
                     Context, type: String, marks: String, location: String,
                     latitude: String, longitude: String,
                     formattedDate: String, dayOfWeek: String, formattedTime: String,
-                    username: String?, email:String?,contact:String,rewards:String,profileUri:String,locationDetails: LocationDetails,onComplete: () -> Unit) {
+                    username: String?, email:String?,rewards:String,profileUri:String,locationDetails: LocationDetails,onComplete: () -> Unit) {
     if (userid != null) {
         val timestamp = Timestamp.now()
-        val complaint = Complaint(userid,timestamp,
-            username.toString(), postId, address, imageUri, type, marks, location, latitude, longitude, formattedDate, dayOfWeek, formattedTime,email.toString(),contact,rewards,profileUri,locationDetails)
+        val expireAt = Timestamp(Date(System.currentTimeMillis() + 2 * 60 * 1000))
+        val complaint = Complaint(userid,timestamp,expireAt,
+            username.toString(), postId, address, imageUri, type, marks, location, latitude, longitude, formattedDate, dayOfWeek, formattedTime,email.toString(),rewards,profileUri,locationDetails)
         db.collection("complaints").document(postId).set(complaint).addOnSuccessListener {
             Toast.makeText(context, "Complaint saved", Toast.LENGTH_SHORT).show()
             FirebaseNotificationHelper.sendNotificationToAll(title.toString(),

@@ -1,8 +1,17 @@
 package com.example.lostfound.presentation
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import android.Manifest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -21,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.modifier.modifierLocalConsumer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -34,7 +45,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.launch
 import com.example.lostfound.R
-@OptIn(ExperimentalMaterial3Api::class)
+import com.example.lostfound.viewmodel.firebase.deleteMessage
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
     val messages = remember { mutableStateListOf<Message>() }
@@ -43,9 +59,15 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
     var newMessageText by remember { mutableStateOf("") }
     val othername=remember { mutableStateOf("") }
     val otherProfile=remember { mutableStateOf("") }
+    val otherNumber=remember { mutableStateOf("") }
+    val context=LocalContext.current
+    val callPermission=rememberPermissionState(android.Manifest.permission.CALL_PHONE)
+
+    var selectedMessageId by remember { mutableStateOf<String?>(null) }
     db.collection("users").document(otherId).get().addOnSuccessListener{
         othername.value=it.getString("name").toString()
         otherProfile.value=it.getString("uri").toString()
+        otherNumber.value=it.getString("phone").toString()
     }
     LaunchedEffect(chatId) {
         db.collection("messages")
@@ -93,8 +115,7 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .clip(CircleShape)
-                                    ,
+                                    .clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         } else {
@@ -103,17 +124,32 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .clip(CircleShape)
-                                    ,
+                                    .clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         }
                     }
                 },
                 actions = {
-
+                    IconButton(onClick = {
+                        if(callPermission.status.isGranted){
+                            val intent=Intent(Intent.ACTION_CALL).apply{
+                                data=Uri.parse("tel:${otherNumber.value}")
+                            }
+                            context.startActivity(intent)
+                        }else{
+                           callPermission.launchPermissionRequest()
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Call",
+                            tint = Color.White
+                        )
+                    }
                 }
             )
+
         }
     ) { paddingValues ->
         Column(
@@ -126,7 +162,15 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                 reverseLayout = true
             ) {
                 items(messages.reversed()) { message ->
-                    MessageItem(message = message)
+                    MessageItem(
+                        message = message,
+                        isCurrentUser = message.sender == currentUserId,
+                        onDelete = {
+                            if (message.sender == currentUserId) {
+                                deleteMessage(chatId, message.id)
+                            }
+                        }
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -176,22 +220,69 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MessageItem(message: Message) {
-    val isCurrentUser = message.sender == FirebaseAuth.getInstance().currentUser?.uid
+fun MessageItem(
+    message: Message,
+    isCurrentUser: Boolean,
+    onDelete: () -> Unit
+) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    var isSelected by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    // Only show dialog if it's the current user's message
+    if (showDialog && isCurrentUser) {
+        AlertDialog(
+            onDismissRequest = {
+                showDialog = false
+                isSelected = false
+            },
+            title = { Text("Delete Message") },
+            text = { Text("Do you want to delete this message?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete()
+                    showDialog = false
+                    isSelected = false
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    isSelected = false
+                }) {
+                    Text("No")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(
+                onClick = { isSelected = false },
+                // Only allow long press if it's the current user's message
+                onLongClick = {
+                    if (isCurrentUser) {
+                        isSelected = true
+                        showDialog = true
+                    }
+                }
+            )
             .padding(5.dp),
         contentAlignment = if (isCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     ) {
         Card(
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isCurrentUser) Color(0xFFDCF8C6) else Color(0xFFEDE8DC)
+                containerColor = if (isSelected && isCurrentUser) Color.LightGray
+                else if (isCurrentUser) Color(0xFFDCF8C6) else Color(0xFFEDE8DC)
             ),
+            border = if (isSelected && isCurrentUser) BorderStroke(1.dp, Color.Gray) else null,
             modifier = Modifier
                 .widthIn(max = screenWidth * 0.7f)
                 .padding(start = if (!isCurrentUser) 5.dp else 0.dp)
@@ -205,6 +296,7 @@ fun MessageItem(message: Message) {
     }
 }
 
+
 fun sendMessage(chatId: String, text: String) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     val db = FirebaseFirestore.getInstance()
@@ -212,6 +304,7 @@ fun sendMessage(chatId: String, text: String) {
     val message = Message(
         sender = currentUserId!!,
         text = text,
+        id=chatId.toString()+System.currentTimeMillis().toString(),
         timestamp = System.currentTimeMillis()
     )
     db.collection("messages")
