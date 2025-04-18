@@ -337,34 +337,40 @@ fun AddComplaintScreen(navController: NavController) {
             // Submit Button
             Button(
                 onClick = {
-                    if (imageUri.value == null) {
-                        Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT).show()
-                        return@Button
-                    }
-                    isLoading.value = true
-                    notificationPermission.launchPermissionRequest()
+                    if(notificationPermission.status.isGranted) {
+                        if (imageUri.value == null) {
+                            Toast.makeText(context, "Please select an image", Toast.LENGTH_SHORT)
+                                .show()
+                            return@Button
+                        }
+                        isLoading.value = true
+                        notificationPermission.launchPermissionRequest()
 
-                    imageUri.value?.let { uri ->
-                        coroutineScope.launch {
-                            saveDataToFirebase(
-                                detectionResult = "",
-                                address = address.value,
-                                uri = uri,
-                                isGranted = notificationPermission.status.isGranted,
-                                context = context,
-                                type = selectedOption.value,
-                                description = marks.value,
-                                location = address.value,
-                                latitude = latitude.value?.toString() ?: "",
-                                longitude = longitude.value?.toString() ?: "",
-                                rewards = rewards.value,
-                                profileUri = profileUri.value,
-                                locationDetails = locationDetails.value ?: LocationDetails()
-                            ) {
-                                isLoading.value = false
-                                navController.navigate("Home")
+                        imageUri.value?.let { uri ->
+                            coroutineScope.launch {
+                                saveDataToFirebase(
+                                    detectionResult = "",
+                                    address = address.value,
+                                    uri = uri,
+                                    isGranted = notificationPermission.status.isGranted,
+                                    context = context,
+                                    type = selectedOption.value,
+                                    description = marks.value,
+                                    location = address.value,
+                                    latitude = latitude.value?.toString() ?: "",
+                                    longitude = longitude.value?.toString() ?: "",
+                                    rewards = rewards.value,
+                                    profileUri = profileUri.value,
+                                    locationDetails = locationDetails.value ?: LocationDetails()
+                                ) {
+                                    isLoading.value = false
+                                    navController.navigate("Home")
+                                }
                             }
                         }
+                    }
+                    else{
+                        notificationPermission.launchPermissionRequest()
                     }
                 },
                 modifier = Modifier

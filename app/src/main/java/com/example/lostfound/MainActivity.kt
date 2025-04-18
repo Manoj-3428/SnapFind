@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import com.example.lostfound.model.Complaint
+import com.example.lostfound.model.Passing
 import com.example.lostfound.presentation.AddComplaintScreen
 import com.example.lostfound.presentation.CallScreen
 import com.example.lostfound.presentation.ChatScreen
@@ -52,6 +53,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalMaterial3Api::class)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -62,9 +64,12 @@ class MainActivity : ComponentActivity() {
             var showBottomBar by remember { mutableStateOf(false) }
             var route by remember { mutableStateOf("home") }
             val authViewModel: AuthViewModel = viewModel()
+
             LaunchedEffect(Unit) {
                 val complaintId = intent?.getStringExtra("complaintId")
                 if (!complaintId.isNullOrEmpty()) {
+                    showTopBar=false
+                    showBottomBar=false
                     navController.navigate("DetailScreen/$complaintId")
                 }
             }
@@ -78,7 +83,7 @@ class MainActivity : ComponentActivity() {
             ) { paddingValues ->
                 NavHost(
                     navController,
-                    startDestination = "home",
+                    startDestination = "onboarding",
                     modifier = Modifier.padding()
                 ) {
                     composable("onboarding") {
@@ -108,15 +113,20 @@ class MainActivity : ComponentActivity() {
                         route="chats"
                         ChatScreen(navController = navController)
                     }
-                    composable("MessageScreen/{chatId}/{otheridName}") { backStackEntry ->
+                    composable("MessageScreen") {
                         showTopBar = false
                         showBottomBar = false
-                        route="message"
+                        val passing = navController.previousBackStackEntry?.savedStateHandle?.get<Passing>("passing")
+                        MessageScreen(passing, navController)
+                    }
+
+
+                    composable("MessageScreen/{chatId}") { backStackEntry ->
+                        showTopBar = false
+                        showBottomBar = false
                         val chatId = backStackEntry.arguments?.getString("chatId")
-                        val otheridName = backStackEntry.arguments?.getString("otheridName")
-                        if (chatId != null) {
-                            MessageScreen(otheridName.toString(),chatId = chatId, navController = navController)
-                        }
+                        val passing = navController.previousBackStackEntry?.savedStateHandle?.get<Passing>("passing")
+                        MessageScreen(passing, navController)
                     }
                     composable("profile") {
                         showTopBar = false
@@ -144,7 +154,7 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("DetailScreen/{complaintId}") { backStackEntry ->
                         val complaintId = backStackEntry.arguments?.getString("complaintId")
-                        val complaint by complaintViewModel.getComplaintById(complaintId).collectAsState(initial = null) // Fetch complaint
+                        val complaint by complaintViewModel.getComplaintById(complaintId).collectAsState(initial = null)
                         DetailScreen(complaint, navController)
                     }
                 }

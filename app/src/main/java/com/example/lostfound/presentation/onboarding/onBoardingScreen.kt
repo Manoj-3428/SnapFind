@@ -43,10 +43,30 @@ import kotlinx.coroutines.launch
 
 data class Onboarding(val image: Int, val title: String, val desc: String)
 val pages = listOf(
-    Onboarding(R.drawable.location, "Search for Lost Items", "Easily browse lost items reported by others."),
-    Onboarding(R.drawable.upload, "Report a Lost Item", "Upload details and a photo to help find your lost belongings."),
-    Onboarding(R.drawable.chat, "Connect with Finders", "Message the person who found your item securely within the app."),
-    Onboarding(R.drawable.community, "Community-Powered Recovery", "Together, let's reunite lost items with their rightful owners!")
+    Onboarding(
+        R.drawable.location,
+        "Search Nearby Lost Items",
+        "Browse recently reported lost items in your area. You’ll also get notified whenever someone posts a new complaint near you."
+    ),
+
+    Onboarding(
+        R.drawable.upload,
+        "Post What You Lost",
+        "Upload a photo and description of your lost item. Posts stay active for 5 to 7 days to keep things up-to-date."
+    ),
+
+    Onboarding(
+        R.drawable.chat,
+        "Connect with Finders",
+        "Securely message users who found your item. Make sure your profile is updated for smooth and clear communication."
+    ),
+
+    Onboarding(
+        R.drawable.community,
+        "Community-Driven Recovery",
+        "Join a trusted network where people help each other reunite lost items with their rightful owners."
+    )
+
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -56,7 +76,6 @@ fun OnboardingScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     val auth= FirebaseAuth.getInstance()
     if(auth.currentUser==null) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -151,6 +170,6 @@ fun OnboardingScreen(navController: NavController) {
         }
     }
     else{
-        navController.navigate("login")
+        navController.navigate("home")
     }
 }

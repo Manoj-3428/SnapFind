@@ -42,7 +42,6 @@ fun store(context: Context, name: String, email: String) {
         val user = Profiles(name = name, email = email, phone = "",uri="",address="", fcmToken = fcmToken)
 
         db.collection("users").document(uid).set(user).addOnSuccessListener {
-            Toast.makeText(context, "Your Profile updated Successfully", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener {
             Toast.makeText(context, "${it.message}", Toast.LENGTH_SHORT).show()
             Log.w("TAG", "Error writing document", it)

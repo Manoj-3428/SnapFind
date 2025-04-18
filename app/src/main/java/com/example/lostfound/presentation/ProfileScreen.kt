@@ -112,38 +112,38 @@ fun ProfileScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                        Box(
+                    Box(
 
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(contentAlignment = Alignment.BottomEnd) {
-                                AsyncImage(
-                                    model = imageUri.value ?: R.drawable.avatar,
-                                    contentDescription = "Profile photo",
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .clip(CircleShape)
-                                        .border(3.dp, primary_light, CircleShape),
-                                    contentScale = ContentScale.Crop
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            AsyncImage(
+                                model = if(imageUri.value.toString().isEmpty()) R.drawable.avatar else imageUri.value,
+                                contentDescription = "Profile photo",
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(CircleShape)
+                                    .border(3.dp, primary_light, CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                            IconButton(
+                                onClick = { imagePicker.launch("image/*") },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(primary_light, CircleShape),
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = primary_light,
+                                    contentColor = white
                                 )
-                                IconButton(
-                                    onClick = { imagePicker.launch("image/*") },
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(primary_light, CircleShape),
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = primary_light,
-                                        contentColor = white
-                                    )
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.pencil),
-                                        contentDescription = "Edit photo",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.pencil),
+                                    contentDescription = "Edit photo",
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
+                    }
 
 
                 }
@@ -152,7 +152,7 @@ fun ProfileScreen(navController: NavController) {
                     onClick = {
                         FirebaseAuth.getInstance().signOut()
                         navController.navigate("login") {
-                            popUpTo("profile") { inclusive = true }
+                            popUpTo(0) { inclusive = true }
                         }
                     },
                     modifier = Modifier
@@ -245,20 +245,26 @@ fun ProfileScreen(navController: NavController) {
                 Spacer(modifier = Modifier.weight(1f))
                 Button(
                     onClick = {
-                        isUploading.value = true
-                        coroutineScope.launch {
-                            profiles(
-                                name = name.value,
-                                email = email.value,
-                                phone = phone.value,
-                                uri = imageUri.value,
-                                address = address.value,
-                                db = db,
-                                storage = storage,
-                                auth = auth,
-                                context = context,
-                                locationDetails = locationDetails.value ?: LocationDetails()
-                            ) { isUploading.value = false }
+                        if(address.value.isNullOrEmpty()){
+                            Toast.makeText(context, "Please enter your address", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        else {
+                            isUploading.value = true
+                            coroutineScope.launch {
+                                profiles(
+                                    name = name.value,
+                                    email = email.value,
+                                    phone = phone.value,
+                                    uri = imageUri.value,
+                                    address = address.value,
+                                    db = db,
+                                    storage = storage,
+                                    auth = auth,
+                                    context = context,
+                                    locationDetails = locationDetails.value ?: LocationDetails()
+                                ) { isUploading.value = false }
+                            }
                         }
                     },
                     modifier = Modifier
@@ -269,7 +275,7 @@ fun ProfileScreen(navController: NavController) {
                         containerColor = primary_light,
                         contentColor = white
                     ),
-                    enabled = !isUploading.value
+                    enabled = !isUploading.value && !isGettingLocation.value
                 ) {
                     if (isUploading.value) {
                         CircularProgressIndicator(
@@ -381,7 +387,7 @@ private fun LocationField(
                 }
             }
         },
-        modifier = modifier.padding(vertical = 8.dp).wrapContentSize(),
+        modifier= Modifier.padding(vertical = 8.dp).fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,
@@ -460,5 +466,5 @@ fun extractDistrict(addressLine: String?): String? {
     if (addressLine.isNullOrEmpty()) return null
 
     val parts = addressLine.split(", ")
-    return if (parts.size > 2) parts[parts.size - 3] else null  // Extract the 3rd last part as the district
+    return if (parts.size > 2) parts[parts.size - 3] else null
 }

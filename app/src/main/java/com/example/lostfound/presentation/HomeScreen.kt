@@ -106,7 +106,9 @@ fun Home(navController: NavController, complaintViewModel: ComplaintViewModel) {
 
     if (user == null) {
         Toast.makeText(context, "You are logged out from your account", Toast.LENGTH_LONG).show()
-        navController.navigate("login")
+        navController.navigate("login"){
+            popUpTo(0)
+        }
         return
     }
 
@@ -314,7 +316,7 @@ fun SearchBar(
         singleLine = true,
         modifier = modifier
             .fillMaxWidth()
-            .wrapContentSize(),
+            .padding(start = 5.dp, end = 5.dp),
         shape = RoundedCornerShape(6.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color.White,

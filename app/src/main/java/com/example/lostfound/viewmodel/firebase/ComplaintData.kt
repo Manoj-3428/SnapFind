@@ -81,7 +81,7 @@ fun saveDataToFirebase(
             storageReference.downloadUrl.addOnSuccessListener { downloadUrl ->
                 Log.d("UploadDebug", "Download URL received: ${downloadUrl.toString()}")
                 storeComplaints(
-                    detectionResult, userid, isGranted, postId, db, address, downloadUrl.toString(),
+                     userid, isGranted, postId, db, address, downloadUrl.toString(),
                     context, type, description, location, latitude, longitude, formattedDate,
                     dayOfWeek, formattedTime, username, email,rewards, profileUri,locationDetails,onComplete
                 )
@@ -113,7 +113,7 @@ fun compressImage(uri: Uri, context: Context): ByteArray? {
 }
 
 
-fun storeComplaints(detectionResults: String, userid: String, isGranted: Boolean, postId: String, db: FirebaseFirestore,
+fun storeComplaints( userid: String, isGranted: Boolean, postId: String, db: FirebaseFirestore,
                     address: String, imageUri: String, context:
                     Context, type: String, marks: String, location: String,
                     latitude: String, longitude: String,
@@ -121,7 +121,7 @@ fun storeComplaints(detectionResults: String, userid: String, isGranted: Boolean
                     username: String?, email:String?,rewards:String,profileUri:String,locationDetails: LocationDetails,onComplete: () -> Unit) {
     if (userid != null) {
         val timestamp = Timestamp.now()
-        val expireAt = Timestamp(Date(System.currentTimeMillis() + 2 * 60 * 1000))
+        val expireAt = Timestamp(Date(System.currentTimeMillis() + 5L * 24 * 60 * 60 * 1000))
         val complaint = Complaint(userid,timestamp,expireAt,
             username.toString(), postId, address, imageUri, type, marks, location, latitude, longitude, formattedDate, dayOfWeek, formattedTime,email.toString(),rewards,profileUri,locationDetails)
         db.collection("complaints").document(postId).set(complaint).addOnSuccessListener {

@@ -74,7 +74,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.mail)
+            .setSmallIcon(R.drawable.app)
             .setContentTitle("Posted by ${title}")
             .setContentText("${type} is missing")
             .setAutoCancel(true)

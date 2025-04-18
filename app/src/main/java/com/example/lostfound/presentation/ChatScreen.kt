@@ -20,8 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.lostfound.model.Chat
+import com.example.lostfound.model.Passing
 import com.example.lostfound.ui.theme.primary
 import com.example.lostfound.ui.theme.primary_dark
 import com.google.firebase.auth.FirebaseAuth
@@ -109,8 +108,17 @@ fun ChatScreen(navController: NavController) {
                     ChatItem(
                         chat = chat,
                         onClick = {
+                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
                             val otherId = if (chat.user1 == currentUserId) chat.user2 else chat.user1
-                            navController.navigate("MessageScreen/${chat.chatId}/$otherId")
+                            val isCurrentUser1 = chat.user1 == currentUserId
+                            val otherUsername = if (isCurrentUser1) chat.username2 else chat.username1
+                            val otherProfilePic = if (isCurrentUser1) chat.userprofile2 else chat.userprofile1
+                            val passing = Passing(otherUsername, otherProfilePic, otherId,chat.chatId)
+                            navController.currentBackStackEntry?.savedStateHandle?.set(
+                                "passing",
+                                passing
+                            )
+                            navController.navigate("MessageScreen")
                         }
                     )
                 }
@@ -142,7 +150,7 @@ fun ChatItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = otherProfilePic.takeIf { !it.isNullOrEmpty() } ?: R.drawable.avatar,
+                model = if(otherProfilePic.isEmpty()) R.drawable.avatar else otherProfilePic,
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .size(60.dp)

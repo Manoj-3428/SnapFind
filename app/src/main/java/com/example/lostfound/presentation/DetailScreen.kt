@@ -27,6 +27,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.lostfound.R
 import com.example.lostfound.model.Complaint
+import com.example.lostfound.model.Passing
 import com.example.lostfound.ui.theme.primary_dark
 import com.example.lostfound.ui.theme.primary_light
 import com.example.lostfound.viewmodel.firebase.DeleteMyComplaint
@@ -298,17 +299,57 @@ private fun ContactOwnerButton(
                         val chatId = "${uid}_${complaint.userId}"
 
                         db.collection("chats").document(chatId).get()
-                            .addOnSuccessListener { document ->
-                                if (document.exists()) {
-                                    navController.navigate("MessageScreen/$chatId/${complaint.userId}")
+                            .addOnSuccessListener { chat ->
+                                if (chat.exists()) {
+                                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                                    val otherId = if (chat.getString("user1") == currentUserId) chat.getString("user2") else chat.getString("user1")
+                                    val isCurrentUser1 = chat.getString("user1") == currentUserId
+                                    val otherUsername = if (isCurrentUser1) chat.getString("username2") else chat.getString("username1")
+                                    val otherProfilePic = if (isCurrentUser1) chat.getString("userprofile2") else chat.getString("userprofile1")
+
+                                    val passing = Passing(
+                                        userName = otherUsername ?: "",
+                                        profileUri = otherProfilePic ?: "",
+                                        userid = otherId ?: "",
+                                        chatId = chatId
+                                    )
+
+                                    navController.currentBackStackEntry?.savedStateHandle?.set<Passing>(
+                                        "passing",
+                                        passing
+                                    )
+                                    navController.navigate("MessageScreen")
                                 } else {
+                                    // Create a new chat
                                     createChat(chatId, uid.toString(), complaint.userId, context) { createdChatId, otherUserId ->
-                                        navController.navigate("MessageScreen/$createdChatId/$otherUserId") {
-                                            popUpTo("ChatScreen") { inclusive = true }
-                                        }
+                                        db.collection("chats").document(chatId).get()
+                                            .addOnSuccessListener { newChat ->
+                                                if (newChat.exists()) {
+                                                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                                                    val otherId = if (newChat.getString("user1") == currentUserId) newChat.getString("user2") else newChat.getString("user1")
+                                                    val isCurrentUser1 = newChat.getString("user1") == currentUserId
+                                                    val otherUsername = if (isCurrentUser1) newChat.getString("username2") else newChat.getString("username1")
+                                                    val otherProfilePic = if (isCurrentUser1) newChat.getString("userprofile2") else newChat.getString("userprofile1")
+
+                                                    val passing = Passing(
+                                                        userName = otherUsername ?: "",
+                                                        profileUri = otherProfilePic ?: "",
+                                                        userid = otherId ?: "",
+                                                        chatId = chatId
+                                                    )
+
+                                                    navController.currentBackStackEntry?.savedStateHandle?.set<Passing>(
+                                                        "passing",
+                                                        passing
+                                                    )
+                                                    navController.navigate("MessageScreen")
+                                                }
+                                            }
                                     }
                                 }
                             }
+
+
                     }
                 ) {
                     Text("Contact", color = primary_dark)

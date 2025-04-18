@@ -45,6 +45,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.launch
 import com.example.lostfound.R
+import com.example.lostfound.model.Passing
 import com.example.lostfound.viewmodel.firebase.deleteMessage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -52,7 +53,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
-fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
+fun MessageScreen(passing: Passing?, navController: NavController){
     val messages = remember { mutableStateListOf<Message>() }
     val db = FirebaseFirestore.getInstance()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
@@ -64,14 +65,14 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
     val callPermission=rememberPermissionState(android.Manifest.permission.CALL_PHONE)
 
     var selectedMessageId by remember { mutableStateOf<String?>(null) }
-    db.collection("users").document(otherId).get().addOnSuccessListener{
+    db.collection("users").document(passing?.userid.toString()).get().addOnSuccessListener{
         othername.value=it.getString("name").toString()
         otherProfile.value=it.getString("uri").toString()
         otherNumber.value=it.getString("phone").toString()
     }
-    LaunchedEffect(chatId) {
+    LaunchedEffect(passing?.chatId.toString()) {
         db.collection("messages")
-            .document(chatId)
+            .document(passing?.chatId.toString())
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
@@ -88,11 +89,12 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                 }
             }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = "${othername.value.capitalize()}", modifier = Modifier.padding(start = 10.dp))
+                    Text(text = "${passing?.userName.toString().capitalize()}", modifier = Modifier.padding(start = 10.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = primary_dark,
@@ -109,7 +111,7 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                         ) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                        if (!otherProfile.value.isNullOrEmpty()) {
+                        if (!passing?.profileUri.toString().isEmpty() || !passing?.profileUri.toString().isNullOrEmpty()) {
                             AsyncImage(
                                 model = otherProfile.value,
                                 contentDescription = "Profile Picture",
@@ -138,7 +140,7 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                             }
                             context.startActivity(intent)
                         }else{
-                           callPermission.launchPermissionRequest()
+                            callPermission.launchPermissionRequest()
                         }
                     }) {
                         Icon(
@@ -167,7 +169,7 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                         isCurrentUser = message.sender == currentUserId,
                         onDelete = {
                             if (message.sender == currentUserId) {
-                                deleteMessage(chatId, message.id)
+                                deleteMessage(passing?.userid.toString(), message.id)
                             }
                         }
                     )
@@ -203,7 +205,7 @@ fun MessageScreen(otherId:String,chatId: String, navController: NavController) {
                     IconButton(
                         onClick = {
                             if (newMessageText.isNotEmpty()) {
-                                sendMessage(chatId, newMessageText)
+                                sendMessage(passing?.chatId.toString(), newMessageText)
                                 newMessageText = ""
                             }
                         }

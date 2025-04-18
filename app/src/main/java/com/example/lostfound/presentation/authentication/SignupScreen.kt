@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -55,7 +57,7 @@ import com.example.lostfound.ui.theme.primary_light
 import com.example.lostfound.ui.theme.secondary_light
 import com.example.lostfound.viewmodel.createUser
 import kotlinx.coroutines.delay
-
+import androidx.compose.runtime.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(navController: NavController) {
@@ -75,9 +77,9 @@ fun SignupScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(10.dp))
             Image(
-                painter = painterResource(id = R.drawable.upload),
+                painter = painterResource(id = R.drawable.signup),
                 contentDescription = null,
-                modifier = Modifier.fillMaxWidth().size(200.dp), contentScale = ContentScale.Crop
+                modifier = Modifier.fillMaxWidth().size(250.dp), contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -89,7 +91,7 @@ fun SignupScreen(navController: NavController) {
                 "Create your account",
                 style = MaterialTheme.typography.titleLarge, color = primary_dark
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = nameState.value,
                 onValueChange = { nameState.value = it },
@@ -156,11 +158,13 @@ fun SignupScreen(navController: NavController) {
                     unfocusedLeadingIconColor = focus.value
                 )
             )
+            var passwordVisible by remember { mutableStateOf(false) }
+
             OutlinedTextField(
                 value = passwordTextState.value,
                 onValueChange = { passwordTextState.value = it },
                 label = { Text(text = "password", color = Color.Gray) },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Go
@@ -170,13 +174,25 @@ fun SignupScreen(navController: NavController) {
                         keyboardController?.hide()
                     }
                 ),
-                modifier = Modifier.wrapContentSize().fillMaxWidth()
+                modifier = Modifier
+                    .wrapContentSize()
+                    .fillMaxWidth()
                     .padding(start = 25.dp, end = 25.dp, top = 10.dp),
                 leadingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.lock),
                         contentDescription = "Lock"
                     )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            painter = painterResource(
+                                if (passwordVisible) R.drawable.showpass else R.drawable.hidepass
+                            ),
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                        )
+                    }
                 },
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     focusedBorderColor = secondary_light,
@@ -187,6 +203,8 @@ fun SignupScreen(navController: NavController) {
                     unfocusedLeadingIconColor = focus.value
                 )
             )
+
+            Spacer(modifier=Modifier.height(16.dp))
             Spacer(modifier = Modifier.weight(1f))
             Button(
                 onClick = {
@@ -201,7 +219,8 @@ fun SignupScreen(navController: NavController) {
                             passwordTextState.value
                         ) {
                             if (it == "Success") {
-                                navController.navigate("home")
+                                navController.navigate("profile")
+                                Toast.makeText(context,"Complete your profile first with valid data",Toast.LENGTH_SHORT).show()
                             } else {
                                 Log.w("Error : ", it)
                                 Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
