@@ -268,7 +268,11 @@ fun ProfileScreen(navController: NavController) {
                                     auth = auth,
                                     context = context,
                                     locationDetails = locationDetails.value ?: LocationDetails()
-                                ) { isUploading.value = false }
+                                ) {
+                                    isUploading.value = false
+                                    navController.navigate("home")
+
+                                }
                             }
                         }
                     },

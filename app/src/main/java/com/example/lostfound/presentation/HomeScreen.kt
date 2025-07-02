@@ -631,7 +631,7 @@ fun ComplaintCard(complaint: Complaint, onClick: () -> Unit) {
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = complaint.locationDetails.village,
+                            text = "${complaint.locationDetails.village}, ${complaint.locationDetails.district}, ${complaint.locationDetails.state}",
                             fontSize = 12.sp,
                             color = Color.Gray,
                             modifier = Modifier.padding(start = 4.dp)
