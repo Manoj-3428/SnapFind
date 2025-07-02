@@ -82,6 +82,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import com.google.firebase.database.FirebaseDatabase
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(navController: NavController, complaintViewModel: ComplaintViewModel) {
@@ -106,19 +108,28 @@ fun Home(navController: NavController, complaintViewModel: ComplaintViewModel) {
 
     if (user == null) {
         Toast.makeText(context, "You are logged out from your account", Toast.LENGTH_LONG).show()
-        navController.navigate("login"){
+        navController.navigate("login") {
             popUpTo(0)
         }
         return
     }
 
-    val db = FirebaseFirestore.getInstance()
+    val db1 = FirebaseDatabase.getInstance()
     val userId = user.uid
+
+
+    LaunchedEffect(userId) {
+        db1.getReference("users").child(userId).get().addOnSuccessListener { snapshot ->
+            snapshot.getValue(Profiles::class.java)?.let { profile ->
+                userProfile = profile.uri
+            }
+        }
+    }
+    val db = FirebaseFirestore.getInstance()
 
     LaunchedEffect(userId) {
         db.collection("users").document(userId).get().addOnSuccessListener { document ->
             document.toObject(Profiles::class.java)?.let { profile ->
-                userProfile=profile.uri
                 profile.locationDetails?.let { location ->
                     districtName = location.district ?: ""
                     stateName = location.state ?: ""

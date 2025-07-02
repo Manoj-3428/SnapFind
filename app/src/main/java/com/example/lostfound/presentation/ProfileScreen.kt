@@ -44,6 +44,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +67,7 @@ fun ProfileScreen(navController: NavController) {
     val locationDetails = remember { mutableStateOf<LocationDetails?>(null) }
 
     val context = LocalContext.current
-    val db = FirebaseFirestore.getInstance()
+    val db = FirebaseDatabase.getInstance()
     val storage = FirebaseStorage.getInstance()
     val auth = FirebaseAuth.getInstance()
     val coroutineScope = rememberCoroutineScope()
@@ -77,11 +78,10 @@ fun ProfileScreen(navController: NavController) {
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> uri?.let { imageUri.value = it } }
-
     LaunchedEffect(Unit) {
         auth.currentUser?.uid?.let { userId ->
-            db.collection("users").document(userId).get().addOnSuccessListener { document ->
-                document.toObject(Profiles::class.java)?.let { profile ->
+            db.getReference("users").child(userId).get().addOnSuccessListener { snapshot ->
+                snapshot.getValue(Profiles::class.java)?.let { profile ->
                     name.value = profile.name
                     email.value = profile.email
                     phone.value = profile.phone
@@ -90,10 +90,14 @@ fun ProfileScreen(navController: NavController) {
                     locationDetails.value = profile.locationDetails
                 }
                 isLoading.value = false
+            }.addOnFailureListener {
+                Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+                isLoading.value = false
             }
-        } ?: run { isLoading.value = false }
+        } ?: run {
+            isLoading.value = false
+        }
     }
-
     if (isLoading.value) {
         LoadingScreen()
     } else {
@@ -250,6 +254,7 @@ fun ProfileScreen(navController: NavController) {
                             return@Button
                         }
                         else {
+                            var rdb= FirebaseDatabase.getInstance()
                             isUploading.value = true
                             coroutineScope.launch {
                                 profiles(
@@ -258,7 +263,7 @@ fun ProfileScreen(navController: NavController) {
                                     phone = phone.value,
                                     uri = imageUri.value,
                                     address = address.value,
-                                    db = db,
+                                    db = rdb,
                                     storage = storage,
                                     auth = auth,
                                     context = context,

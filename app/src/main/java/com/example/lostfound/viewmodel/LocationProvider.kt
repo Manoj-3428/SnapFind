@@ -43,7 +43,6 @@ fun Location(context: Context, coroutineScope: CoroutineScope): MutableState<Lis
                 final.value = listOf("0", "0", "Address not found")
             }
         }
-
     return final
 }
 

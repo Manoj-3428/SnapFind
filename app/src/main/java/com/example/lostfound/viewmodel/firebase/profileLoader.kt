@@ -6,17 +6,17 @@ import android.util.Log
 import android.widget.Toast
 import com.example.lostfound.model.LocationDetails
 import com.example.lostfound.model.Profiles
-import com.example.lostfound.viewmodel.store
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
+
 fun profiles(
     name: String = "",
     email: String = "",
     phone: String = "",
     uri: Uri? = null,
     address: String = "",
-    db: FirebaseFirestore,
+    db: FirebaseDatabase, // 🔁 Changed type to Realtime DB
     storage: FirebaseStorage,
     auth: FirebaseAuth,
     context: Context,
@@ -29,10 +29,10 @@ fun profiles(
     }
 
     val userId = user.uid
-    val userRef = db.collection("users").document(userId)
+    val userRef = db.getReference("users").child(userId)
 
-    userRef.get().addOnSuccessListener { doc ->
-        val existingProfile = doc.toObject(Profiles::class.java)
+    userRef.get().addOnSuccessListener { snapshot ->
+        val existingProfile = snapshot.getValue(Profiles::class.java)
         val existingUri = existingProfile?.uri ?: ""
         val isFirebaseUrl = uri?.toString()?.startsWith("https://firebasestorage.googleapis.com") == true
 
@@ -89,7 +89,7 @@ private fun uploadImageAndUpdateProfile(
     email: String,
     phone: String,
     address: String,
-    db: FirebaseFirestore,
+    db: FirebaseDatabase,
     auth: FirebaseAuth,
     context: Context,
     locationDetails: LocationDetails,
@@ -120,13 +120,11 @@ private fun uploadImageAndUpdateProfile(
                 }
         }
         .addOnFailureListener { e ->
-            Toast.makeText(context,"Make sure You select an profile image",Toast.LENGTH_SHORT).show()
+            Toast.makeText(context,"Make sure You select a profile image", Toast.LENGTH_SHORT).show()
             Log.e("ProfileUpdate", "Image upload error", e)
             onComplete()
         }
 }
-
-
 
 fun store(
     name: String,
@@ -134,7 +132,7 @@ fun store(
     phone: String,
     uri: String,
     address: String,
-    db: FirebaseFirestore,
+    db: FirebaseDatabase, // 🔁 Realtime DB here too
     auth: FirebaseAuth,
     context: Context,
     locationDetails: LocationDetails,
@@ -147,17 +145,15 @@ fun store(
     }
 
     val uid = user.uid
-    val userRef = db.collection("users").document(uid)
+    val userRef = db.getReference("users").child(uid)
 
-    userRef.get().addOnSuccessListener { document ->
-        val existingProfile = document.toObject(Profiles::class.java)
-
-        // Preserve old image if no new one is provided
+    userRef.get().addOnSuccessListener { snapshot ->
+        val existingProfile = snapshot.getValue(Profiles::class.java)
         val finalUri = if (uri.isNotEmpty()) uri else existingProfile?.uri ?: ""
 
         val profile = Profiles(name, email, phone, finalUri, address, locationDetails)
 
-        userRef.set(profile)
+        userRef.setValue(profile)
             .addOnSuccessListener {
                 Toast.makeText(context, "Your Profile updated Successfully", Toast.LENGTH_SHORT).show()
                 onComplete()
